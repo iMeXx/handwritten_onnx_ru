@@ -51,6 +51,11 @@ make merge            # снимок app.db -> data/db/app-merged.db, склей
 make ds-merged        # person-disjoint датасет из снимка -> data/line-vectors-m/
 make ablation-merged  # триада по людям: merge + ds-merged + обучение + вердикт
                       # (train-merged / eval-merged / compare-merged / smoke-merged)
+make deploy-push      # rsync кода на сервер DEPLOY_SSH=user@host в /opt/inknet
+make deploy-install   # установка веб-приложения на Ubuntu: node24+systemd+nginx+certbot
+make deploy-db        # снимок локальной app.db -> сервер (sqlite3 .backup, не cp)
+make deploy-status    # systemctl-состояние и таймер бэкапа (deploy-logs — журнал)
+                      # домен/порт/email: DEPLOY_DOMAIN/WEB_PORT/DEPLOY_EMAIL, подробности — docs/DEPLOY.md
 ```
 
 Разовые переопределения: `make train ARGS="--mode raster --runs 3"`.

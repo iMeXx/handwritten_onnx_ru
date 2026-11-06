@@ -1,0 +1,11 @@
+# Ежедневный снимок базы в 03:15; Persistent=true — догонит после выключения
+# сервера (домашний сервер часто выключен).
+[Unit]
+Description=inknet: ежедневный бэкап базы написаний
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

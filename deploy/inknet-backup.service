@@ -1,0 +1,16 @@
+# Разовый запуск снимка базы (запускается таймером inknet-backup.timer).
+# EnvironmentFile даёт DB_PATH из /etc/inknet/env.
+[Unit]
+Description=inknet: снимок базы написаний (sqlite3 .backup)
+
+[Service]
+Type=oneshot
+User=inknet
+Group=inknet
+EnvironmentFile=-/etc/inknet/env
+ExecStart=/usr/local/bin/inknet-backup.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/backups/inknet

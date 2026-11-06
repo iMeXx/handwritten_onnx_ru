@@ -38,8 +38,8 @@ make up                # веб-приложение: http://127.0.0.1:3210 (mak
 ```
 
 `make parity` на машине без `../inknet-online` печатает skip — гейт живёт там,
-где есть оба репозитория. Настройку сервера (Ubuntu, systemd, nginx+TLS) см.
-`deploy/` (этап 2) и комментарии в `.env.example`.
+где есть оба репозитория. Деплой на сервер (Ubuntu, systemd, nginx+TLS,
+rsync-доставка кода, перенос базы) — [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Триада по людям (person-disjoint) — как гонять
 

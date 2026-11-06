@@ -1,0 +1,44 @@
+# /etc/nginx/sites-available/inknet — генерирует deploy/install.sh из шаблона
+# (подмена __DOMAIN__ и __PORT__). certbot --nginx --redirect добавит TLS и
+# редирект 80→443. Приложение слушает только 127.0.0.1:__PORT__.
+#
+# Важно для планашета: POST /api/train — большие тела (целые сессии написаний,
+# сервер копится Buffer-чанками), client_max_body_size занижать нельзя.
+# sw.js отдаём без кэша: старый service worker = заклинивший клиент.
+
+limit_req_zone $binary_remote_addr zone=ink_api:10m rate=8r/s;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__;
+
+    # сессия написаний одним POST (see выше)
+    client_max_body_size 64m;
+
+    # вход по имени без пароля — только за TLS; rate-limit на API (зона
+    # ink_api определена в шапке файла, входит в sites-enabled)
+    location /api/ {
+        limit_req zone=ink_api burst=20 nodelay;
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+
+    location = /sw.js {
+        add_header Cache-Control "no-cache";
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_set_header Host $host;
+    }
+
+    # модели .onnx/.ort ~18 МБ — gzip не нужен (бинарные, кэшируются SW),
+    # отдаём как есть; статика остальная — прокси (приложение знает MIME)
+    location / {
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

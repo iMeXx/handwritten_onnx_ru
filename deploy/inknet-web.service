@@ -1,0 +1,32 @@
+# inknet-hybrid веб-приложение (jsnet) как systemd-сервис.
+# Установка: deploy/install.sh (копирует в /etc/systemd/system/inknet-web.service).
+# Код читается только на чтение (ProtectSystem=strict), писать сервису разрешено
+# лишь в /var/lib/inknet (база app.db в WAL + снимки). Лог — journald:
+#   journalctl -u inknet-web
+[Unit]
+Description=inknet-hybrid web (сбор написаний / тренировка / распознавание)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=inknet
+Group=inknet
+WorkingDirectory=/opt/inknet
+EnvironmentFile=-/etc/inknet/env
+# сервер читает PORT/HOST (см. jsnet/server/index.js), не WEB_PORT/WEB_HOST
+ExecStart=/usr/bin/node jsnet/server/index.js
+Restart=on-failure
+RestartSec=3
+
+# hardening: код и система только для чтения, запись — только база
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ReadWritePaths=/var/lib/inknet
+
+[Install]
+WantedBy=multi-user.target
