@@ -79,7 +79,8 @@ TRAIN_ARGS = --data $(DATA_DIR) --out $(WORK_DIR) --epochs $(EPOCHS) \
 
 .PHONY: help env venv py-check ds train eval ablation compare smoke parity export-onnx up down status log clean \
         merge ds-merged train-merged eval-merged ablation-merged compare-merged clean-merge smoke-merged \
-        deploy-check deploy-push deploy-install deploy-db deploy-logs deploy-status
+        deploy-check deploy-push deploy-install deploy-db deploy-logs deploy-status \
+        deploy-push-local deploy-install-local deploy-db-local deploy-logs-local deploy-status-local
 
 help: ## список целей
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS=":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -228,31 +229,56 @@ log: ## последние 30 строк лога веб-приложения
 clean: ## удалить датасеты (обычный и person-disjoint) и веса
 	rm -rf $(DATA_DIR) $(WORK_DIR) $(DATA_DIR_M) $(WORK_DIR_M)
 
-# --- деплой на Ubuntu (этап 2): доставка кода по rsync (git-remote не обязателен),
-# установка на сервере deploy/install.sh; DEPLOY_SSH=user@host. Подробности —
-# docs/DEPLOY.md (sudo на сервере: root или NOPASSWD для install.sh) ---
+# --- деплой на Ubuntu (этап 2): доставка кода rsync (git-remote и ssh для
+# деплоя не обязательны: targets *-local для случая «сервер = эта машина»),
+# установка deploy/install.sh. DEPLOY_SSH=user@host для ssh-варианта.
+# TLS: DEPLOY_CERT/DEPLOY_KEY — готовые сертификаты (на этой машине wildcard
+# *.imx.work.gd в /etc/nginx/ssl); без них install.sh зовёт certbot.
+# Подробности — docs/DEPLOY.md (sudo на сервере: root или NOPASSWD) ---
 DEPLOY_SSH ?=
-DEPLOY_DOMAIN ?= imx.work.gd
+DEPLOY_DOMAIN ?= ink.imx.work.gd
 DEPLOY_EMAIL ?=
+DEPLOY_CERT ?=
+DEPLOY_KEY ?=
+DEPLOY_TLS := $(if $(DEPLOY_CERT),--cert $(DEPLOY_CERT) --key $(DEPLOY_KEY),)
 
 deploy-check:
-	@[ -n "$(DEPLOY_SSH)" ] || { echo "DEPLOY_SSH не задан: make deploy-push DEPLOY_SSH=user@host"; exit 1; }
+	@[ -n "$(DEPLOY_SSH)" ] || { echo "DEPLOY_SSH не задан: make deploy-push DEPLOY_SSH=user@host (или цель *-local)"; exit 1; }
 
-deploy-push: deploy-check ## rsync кода на сервер в /opt/inknet (исходники: без data/work/базы/venv/.env)
+deploy-push: deploy-check ## rsync кода на ssh-сервер в /opt/inknet (исходники: без data/work/базы/venv/.env)
 	# --delete без --delete-excluded: исключённое (venv, .env, db) на сервере не удаляется
 	rsync -az --delete \
 	  --exclude .git --exclude .venv --exclude data --exclude work --exclude 'work-*' \
 	  --exclude jsnet/db --exclude jsnet/logs --exclude export --exclude __pycache__ \
 	  --exclude .env ./ $(DEPLOY_SSH):/opt/inknet/
 
-deploy-install: deploy-check ## установка на сервере: apt, node24, systemd, nginx + certbot TLS (--with-train для этапа 3)
-	ssh $(DEPLOY_SSH) "sudo bash /opt/inknet/deploy/install.sh --domain $(DEPLOY_DOMAIN) --port $(WEB_PORT) $(if $(DEPLOY_EMAIL),--email $(DEPLOY_EMAIL),)"
+deploy-push-local: ## rsync кода на ЭТУ машину в /opt/inknet (sudo; сервер = dev-машина)
+	# --delete без --delete-excluded: исключённое (в т.ч. .venv, .env, база) не удаляется
+	sudo rsync -az --delete \
+	  --exclude .git --exclude .venv --exclude data --exclude work --exclude 'work-*' \
+	  --exclude jsnet/db --exclude jsnet/logs --exclude export --exclude __pycache__ \
+	  --exclude .env ./ /opt/inknet/
 
-deploy-db: deploy-check ## снимок локальной app.db -> сервер (sqlite3 .backup; сервис кратко стоп/старт)
+deploy-install: deploy-check ## установка на ssh-сервере: apt, node24, systemd, nginx + TLS (certbot или DEPLOY_CERT/KEY)
+	ssh $(DEPLOY_SSH) "sudo bash /opt/inknet/deploy/install.sh --domain $(DEPLOY_DOMAIN) --port $(WEB_PORT) $(if $(DEPLOY_EMAIL),--email $(DEPLOY_EMAIL),)$(DEPLOY_TLS)"
+
+deploy-install-local: ## установка на ЭТОЙ машине: apt, node24, systemd, nginx + TLS (DEPLOY_CERT/KEY — готовые сертификаты)
+	sudo bash deploy/install.sh --domain $(DEPLOY_DOMAIN) --port $(WEB_PORT) $(if $(DEPLOY_EMAIL),--email $(DEPLOY_EMAIL),)$(DEPLOY_TLS)
+
+deploy-db: deploy-check ## снимок локальной app.db -> ssh-сервер (sqlite3 .backup; сервис кратко стоп/старт)
 	bash deploy/push-db.sh $(DEPLOY_SSH) $(WEB_ONNX)/db/app.db
 
-deploy-logs: deploy-check ## последние 40 строк журнала веб-сервиса на сервере
+deploy-db-local: ## снимок локальной app.db на ЭТУ машину (sqlite3 .backup; sudo; сервис кратко стоп/старт)
+	bash deploy/push-db.sh local $(WEB_ONNX)/db/app.db
+
+deploy-logs: deploy-check ## последние 40 строк журнала веб-сервиса на ssh-сервере
 	ssh $(DEPLOY_SSH) "sudo journalctl -u inknet-web -n 40 --no-pager"
 
-deploy-status: deploy-check ## состояние веб-сервиса и таймера бэкапа на сервере
+deploy-logs-local: ## журнал веб-сервиса на ЭТОЙ машине
+	sudo journalctl -u inknet-web -n 40 --no-pager
+
+deploy-status: deploy-check ## состояние веб-сервиса и таймера бэкапа на ssh-сервере
 	ssh $(DEPLOY_SSH) "sudo systemctl status inknet-web --no-pager -n 3; systemctl list-timers inknet-backup.timer --no-pager | head -4"
+
+deploy-status-local: ## состояние веб-сервиса и таймера бэкапа на ЭТОЙ машине
+	sudo systemctl status inknet-web --no-pager -n 3; systemctl list-timers inknet-backup.timer --no-pager | head -4
