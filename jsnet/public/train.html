@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Тренировка почерка — inknet-hybrid</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<!-- Тренировка почерка: калибровка эталонов написаний. Эталоны идут в датасет
+     векторных строк (refs в make ds); модельная проверка — nearest-neighbor по
+     ink-features, без ONNX (см. js/qc.js). -->
+<body>
+  <header>
+    <h1><a href="/">inknet-hybrid</a> <span>тренировка почерка · эталоны символов</span></h1>
+    <div class="head-right">
+      <button id="btn-avatar" class="avatar" hidden title="Меню">?</button>
+      <div id="app-menu" class="app-menu" hidden>
+        <a href="/">← Главная</a>
+        <a href="/collect.html">2 · Сбор датасета</a>
+        <a href="/stats.html">3 · Статистика датасета</a>
+        <a href="/lines.html">4 · Распознавание строк</a>
+        <button id="btn-logout">Выйти</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <button id="btn-start" class="check">Начать тренировку</button>
+      <button id="btn-review" hidden></button>
+      <button id="btn-stop" hidden>Закончить</button>
+      <span id="pf-meta" class="muted small"></span>
+    </div>
+
+    <div id="progress" class="cstrip" title="строчные · ЗАГЛАВНЫЕ · цифры 1–9"></div>
+
+    <div id="calib-banner" class="banner" hidden>
+      <span id="calib-char" class="big-char"></span>
+      <span id="calib-hint" class="muted small">пишите поверх крупной подсказки · эталон сохранится сам после отрыва пера</span>
+    </div>
+
+    <div class="toolbar">
+      <button id="btn-undo" title="Отменить последний штрих (Ctrl+Z)">↩ Штрих</button>
+      <button id="btn-clear">Очистить</button>
+      <button id="btn-pen" title="Настройки пера и холста">✒ Перо</button>
+      <span class="grow"></span>
+      <button id="btn-wipe" class="danger" title="Удалить все эталоны этого профиля">Стереть эталоны</button>
+    </div>
+
+    <div id="pen-panel" class="sb-wrap" hidden></div>
+
+    <div id="calib-review" class="review" hidden>
+      <span id="calib-review-text"></span>
+      <span class="grow"></span>
+      <button id="btn-review-save">Сохранить как есть</button>
+      <button id="btn-review-retry" hidden>Повторить отправку</button>
+      <button id="btn-review-redo" class="primary">Переписать</button>
+    </div>
+
+    <div class="pad-field">
+      <canvas id="pad"></canvas>
+      <div id="ghost-char" class="ghost-char" hidden></div>
+      <div class="pad-caption">пишите по крупной подсказке · клетка как в тетради</div>
+    </div>
+
+    <div class="status-bar"><p id="status" class="status">Загрузка…</p></div>
+
+    <p class="muted small">Эталон — чистое написание символа: после отрыва пера он
+      проверяется (гейты мусора + ближайший сосед к вашим эталонам) и сохраняется
+      автоматически. Если проверка прочитала другой символ — эталон не сохраняется
+      молча: выберите «сохранить как есть» (он пометится спорным и попадёт в
+      очередь переписывания) или перепишите. Тренированные символы: строчные,
+      ЗАГЛАВНЫЕ и цифры 1–9.</p>
+  </main>
+
+  <script type="module" src="/js/train.js"></script>
+</body>
+</html>

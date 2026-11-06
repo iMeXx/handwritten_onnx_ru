@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Статистика датасета — inknet-hybrid</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<!-- Статистика датасета написаний: покрытие авторов и букв по тем же гейтам,
+     что у scripts/build-line-vector-ds.mjs (make ds) — видно, кто попадёт в
+     writer-disjoint фолды и хватает ли базы для гейта M0 (≥5–10 авторов). -->
+<body>
+  <header>
+    <h1><a href="/">inknet-hybrid</a> <span>статистика датасета · покрытие авторов и букв</span></h1>
+    <div class="head-right">
+      <button id="btn-avatar" class="avatar" hidden title="Меню">?</button>
+      <div id="app-menu" class="app-menu" hidden>
+        <a href="/">← Главная</a>
+        <a href="/train.html">1 · Тренировка почерка</a>
+        <a href="/collect.html">2 · Сбор датасета</a>
+        <a href="/lines.html">4 · Распознавание строк</a>
+        <button id="btn-logout">Выйти</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <h2 style="margin:0">Датасет написаний</h2>
+      <span class="grow"></span>
+      <button id="btn-refresh" class="primary">Обновить</button>
+      <a class="btnlink" href="/api/train/export" title="Скачать все написания этого автора (inknet-collect/1)">Мой JSON</a>
+    </div>
+
+    <div id="cards" class="cards"></div>
+
+    <h3>Авторы <span class="muted small">(в датасет попадает автор с покрытием ≥ порога — см. гейты ниже)</span></h3>
+    <table class="stats" id="writers-table">
+      <thead><tr>
+        <th>Автор</th><th>Профиль с</th><th>Согласие</th>
+        <th>Эталоны</th><th>Спорные</th><th>Написания</th>
+        <th>Букв покрыто</th><th>Слов для синтеза</th><th>В make ds</th><th>Активность</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h3>Покрытие букв · авторы <span class="muted small">(число — сколько авторов написали эту букву хотя бы один раз)</span></h3>
+    <div id="chars-cyr" class="charstrip"></div>
+    <div id="chars-digits" class="charstrip"></div>
+
+    <div class="status-bar"><p id="stats-note" class="status"></p></div>
+  </main>
+
+  <script type="module" src="/js/stats.js"></script>
+</body>
+</html>

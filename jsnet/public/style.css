@@ -1,0 +1,340 @@
+/* Общий стиль страниц (вход/тренировка/сбор/статистика/распознавание). Компактная
+   местная версия style.css сборочного приложения: та же сетка (шапка, toolbar,
+   холст, полоса чипов), без сторонних шрифтов. */
+:root {
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --line: #d7dde6;
+  --text: #1d2430;
+  --muted: #66748a;
+  --accent: #1f5fbf;
+  --ok: #1d7a3f;
+  --warn: #a85b00;
+  --bad: #b3261e;
+  --chip: #eef2f7;
+}
+* { box-sizing: border-box; }
+/* UA-правило [hidden]{display:none} проигрывает по специфичности классам с явным
+   display (.app-menu, .hub, .ghost-char, .banner, .review…) — hidden молчал, а
+   меню/панели были видны всегда и переключение «не работало». !important обязателен */
+[hidden] { display: none !important; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 system-ui, "Segoe UI", Roboto, sans-serif;
+}
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 10px 16px;
+  background: var(--card); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 10;
+}
+header h1 { font-size: 17px; margin: 0; }
+header h1 a { color: var(--text); text-decoration: none; }
+header h1 span { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
+.head-right { position: relative; display: flex; align-items: center; gap: 8px; }
+.avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--chip);
+  font-weight: 700; cursor: pointer;
+}
+.app-menu {
+  position: absolute; right: 0; top: 42px; min-width: 210px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(20, 30, 50, .12);
+  display: flex; flex-direction: column; padding: 6px; z-index: 20;
+}
+.app-menu a, .app-menu button {
+  display: block; padding: 8px 10px; border: 0; background: none;
+  color: var(--text); text-decoration: none; text-align: left;
+  border-radius: 6px; font: inherit; cursor: pointer;
+}
+.app-menu a:hover, .app-menu button:hover { background: var(--chip); }
+
+main { max-width: 1100px; margin: 0 auto; padding: 14px 16px 40px; }
+
+.toolbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 8px 0;
+}
+.grow { flex: 1; }
+
+/* панель «Перо и холст» (pensettings.js — байтовая копия); палитра наша,
+   структура/классы sb-* — копии, разметка панели одинакова на всех страницах */
+#pen-panel { margin: 0 0 10px; }
+.row { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 14px; }
+button.link {
+  border: none; background: none; color: var(--muted);
+  text-decoration: underline; padding: 2px 0; font-size: 13px; cursor: pointer;
+}
+button.link:hover { color: var(--accent); }
+.sb-wrap { display: flex; flex-wrap: wrap; gap: 10px; }
+.sb-block {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; flex: 1 1 250px; min-width: 230px; max-width: 460px;
+}
+.sb-block h3 {
+  margin: 0 0 8px; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--muted);
+}
+.sb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 2px 14px; }
+.sb-ctrl { display: flex; align-items: center; gap: 8px; font-size: 13px; min-height: 26px; }
+.sb-ctrl label { min-width: 96px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.sb-ctrl input[type="range"] { flex: 1; min-width: 60px; accent-color: var(--accent); cursor: pointer; }
+.sb-ctrl input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.sb-ctrl input:disabled { opacity: 0.4; }
+.sb-val { min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+.sb-swatches { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.sb-swatch {
+  width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent;
+  padding: 0; cursor: pointer; transition: transform 0.15s;
+}
+.sb-swatch:hover { transform: scale(1.12); }
+.sb-swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(31, 95, 191, .25); }
+.sb-swatch-custom {
+  width: 26px; height: 26px; padding: 0; border: 2px solid var(--line);
+  border-radius: 50%; background: none; cursor: pointer; overflow: hidden;
+}
+.sb-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sb-preset { font-size: 12px; padding: 5px 10px; border-radius: 999px; }
+.sb-preset.active { border-color: var(--accent); background: #e8f0fb; color: var(--accent); }
+button {
+  font: inherit; padding: 8px 14px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--card); color: var(--text);
+  cursor: pointer;
+}
+button:hover { border-color: #b9c3d1; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.check { background: var(--ok); border-color: var(--ok); color: #fff; font-weight: 700; }
+button.danger { color: var(--bad); }
+button:disabled { opacity: .5; cursor: default; }
+a.btnlink {
+  display: inline-block; padding: 8px 14px; border-radius: 8px; text-decoration: none;
+  border: 1px solid var(--line); background: var(--card); color: var(--text);
+}
+
+.task-text { margin: 0; font-weight: 600; flex: 1 1 260px; }
+.task-chip, #task-chip {
+  background: var(--chip); border: 1px solid var(--line); border-radius: 6px;
+  padding: 4px 10px; font-weight: 700;
+}
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.error { color: var(--bad); }
+
+/* полоса чипов прогресса */
+.cstrip {
+  display: flex; gap: 4px; overflow-x: auto; padding: 6px 2px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+  margin: 8px 0;
+}
+.cchip {
+  flex: 0 0 auto; padding: 3px 7px; border-radius: 6px; background: var(--chip);
+  font-size: 13px; border: 1px solid transparent;
+}
+.cchip b { margin-left: 4px; font-weight: 600; color: var(--muted); }
+.cchip.done { background: #e0f1e4; color: var(--ok); }
+.cchip.review { border-color: var(--warn); color: var(--warn); }
+.cchip.active { border-color: var(--accent); }
+
+/* холст + крупная подсказка */
+.pad-field { position: relative; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.pad-field canvas { display: block; width: 100%; height: 56vh; min-height: 320px; touch-action: none; }
+.ghost-char {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: min(40vh, 340px); color: rgba(30, 50, 90, .10);
+  pointer-events: none; user-select: none; font-family: "Segoe Script", "Comic Sans MS", cursive;
+}
+.pad-caption {
+  position: absolute; left: 10px; bottom: 6px; color: var(--muted); font-size: 12px;
+  pointer-events: none;
+}
+
+/* баннер задания тренировки и панель вердикта */
+.banner {
+  display: flex; align-items: center; gap: 14px;
+  background: #eaf1fb; border: 1px solid #c4d7f0; border-radius: 10px;
+  padding: 10px 14px; margin: 8px 0;
+}
+.banner .big-char { font-size: 40px; font-weight: 700; line-height: 1; }
+.review {
+  background: #fff7e8; border: 1px solid #ecd4a6; border-radius: 10px;
+  padding: 10px 14px; margin: 8px 0;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.review.error { background: #fdeceb; border-color: #efb7b2; }
+
+/* статусная строка */
+.status-bar { margin: 6px 0; }
+.status { margin: 0; min-height: 20px; color: var(--muted); }
+
+/* вход по имени (паролей нет) */
+.login-wrap { max-width: 420px; margin: 8vh auto 0; padding: 0 16px; }
+.login-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+}
+.login-card h2 { margin: 0 0 6px; }
+.login-form { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.login-form label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 3px; }
+.login-form input[type="text"] {
+  width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit;
+}
+
+/* карточки-хаб на главной под авторизованным пользователем */
+.hub { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 16px; }
+.hub a {
+  display: block; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 16px; text-decoration: none; color: var(--text);
+}
+.hub a:hover { border-color: var(--accent); }
+.hub h3 { margin: 0 0 6px; }
+.hub p { margin: 0; color: var(--muted); font-size: 13px; }
+
+/* статистика */
+.cards { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px; min-width: 130px;
+}
+.card b { display: block; font-size: 22px; }
+.card span { color: var(--muted); font-size: 12px; }
+table.stats { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+table.stats th, table.stats td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 14px; }
+table.stats th { background: var(--chip); font-size: 12px; color: var(--muted); }
+table.stats td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+.tag.ok { background: #e0f1e4; color: var(--ok); }
+.tag.no { background: #fdeceb; color: var(--bad); }
+.tag.mid { background: #fff7e8; color: var(--warn); }
+.charstrip { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.cov { padding: 3px 7px; border-radius: 6px; background: var(--chip); font-size: 13px; }
+.cov b { color: var(--muted); margin-left: 3px; }
+.cov.zero { background: #fdeceb; color: var(--bad); }
+.cov.thin { background: #fff7e8; color: var(--warn); }
+
+/* ——— Страница распознавания строк (/lines.html): стили этой секции.
+   Правила области собираются классами .stage/.lines-pad/
+   .resultbar: глобальные .toolbar/.pad-field/.status-bar заняты остальными
+   страницами (train/collect), их layout не трогаем.
+   Холст — внизу: над ним toolbar, строки, статус, подсказки — снизу и справа
+   от холста ничего нет: там при письме лежит ребро ладони. */
+main#app { max-width: none; padding: 12px 16px; }
+/* касания ладонью элементов страницы не должны запускать выделение текста;
+   выделять можно только распознанные строки (и работать с инпутом) */
+main#app {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+main#app .lines-out {
+  user-select: text;
+  -webkit-user-select: text;
+}
+.stage { display: grid; gap: 10px; }
+.stage.with-side {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "toolbar"
+    "result"
+    "status"
+    "side"
+    "pad";
+}
+.stage .toolbar {
+  grid-area: toolbar; margin: 0;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 8px 10px;
+}
+.stage .toolbar .grow { flex: 1 1 auto; }
+.btn-clear { font-weight: 600; letter-spacing: 0.04em; }
+button.check { font-size: 15px; letter-spacing: 0.06em; padding: 10px 16px; border-radius: 12px; }
+button.check:hover { filter: brightness(1.06); }
+
+.resultbar {
+  grid-area: result;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 8px 12px;
+  /* заголовок слева, «время · средний балл» справа, список строк — на всю ширину */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label meta"
+    "list  list";
+  column-gap: 10px;
+  row-gap: 2px;
+  /* фиксированная высота (с запасом на 3 строки): появление распознанных
+     строк не меняет геометрию страницы и не сдвигает холст; если строк
+     больше — внутренний скролл */
+  height: 128px;
+  min-width: 0;
+}
+.resultbar .rb-label {
+  grid-area: label; align-self: center;
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+}
+.resultbar .lines-out { grid-area: list; }
+.lines-meta {
+  grid-area: meta; justify-self: end; align-self: center;
+  font-size: 12px; color: var(--muted); white-space: nowrap;
+}
+
+.lines-out {
+  display: flex; flex-direction: column; gap: 4px;
+  height: 100%; overflow-y: auto; overscroll-behavior: contain; flex: 1 1 auto;
+}
+.line-row {
+  display: flex; align-items: baseline; gap: 8px;
+  background: var(--chip); border-radius: 8px; padding: 4px 10px;
+}
+.line-num { flex: 0 0 auto; color: var(--muted); font-size: 12px; min-width: 16px; }
+/* клик по тексту строки — инлайн-правка (исправленное уходит в «Скопировать») */
+.line-text {
+  flex: 1 1 auto; font-size: 18px; line-height: 1.4; word-break: break-word;
+  cursor: text; min-width: 0;
+}
+/* «галочка» пользователя: после ручной правки строка тонированием акцентом */
+.line-text.fixed { color: var(--accent); }
+/* низкая уверенность распознавания (< 0.6) — строку стоит проверить глазами */
+.line-text.low { color: #8a5a00; }
+.line-conf { flex: 0 0 auto; color: var(--muted); font-size: 12px; }
+.line-conf.low { color: #b26a00; font-weight: 600; }
+.line-edit {
+  flex: 1 1 auto; min-width: 0; font-family: inherit; font-size: 18px;
+  padding: 2px 6px; background: #fffdf3; border: 1px solid var(--accent); border-radius: 6px;
+}
+
+.stage .status-bar {
+  grid-area: status; margin: 0;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 2px 12px;
+  /* тоже фиксированная высота: длинные сообщения статуса не сдвигают холст */
+  height: 38px; overflow-y: auto;
+}
+.status-bar .status { margin: 6px 0; }
+
+/* холст распознавания: абсолютный canvas в поле фиксированной высоты
+   (глобальный .pad-field canvas с 56vh здесь только ломал бы geometry) */
+.stage .pad-field.lines-pad {
+  grid-area: pad;
+  height: min(52vh, 460px); min-height: 300px;
+  border-radius: 14px; overflow: hidden;
+}
+.lines-pad #pad {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  min-height: 0; cursor: crosshair;
+}
+
+.stage .side-col { grid-area: side; min-width: 0; }
+
+/* подсказка о калибровке; ссылка ведёт на /train.html */
+.calib-hint {
+  font-size: 13px; line-height: 1.5;
+  padding: 8px 10px; margin-bottom: 10px;
+  border-radius: 8px;
+  background: #fff8e6; border: 1px solid #f0dfa8;
+}
+.calib-hint b { letter-spacing: 0.06em; }
+.calib-hint .ok { color: #2e7d32; }
+.calib-hint a { color: var(--accent); }
+

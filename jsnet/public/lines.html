@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Распознавание строк — inknet-hybrid</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<!-- Распознавание строк: 1–3 строки подряд на холсте, CTC-модель
+     (models/line_int8.onnx) считается в Web Worker
+     (ONNX Runtime Web, WASM), панель распознанных строк с инлайн-правкой.
+     Вход — через общий shell jsnet: гость улетает на "/", здесь страница
+     работает под автором. -->
+<body>
+  <header>
+    <h1><a href="/">inknet-hybrid</a> <span>распознавание строк · непрерывное письмо, 1–3 строки на холсте · ONNX в браузере</span></h1>
+    <div class="head-right">
+      <button id="btn-avatar" class="avatar" hidden title="Меню">?</button>
+      <div id="app-menu" class="app-menu" hidden>
+        <a href="/">← Главная</a>
+        <a href="/train.html">1 · Тренировка почерка</a>
+        <a href="/collect.html">2 · Сбор датасета</a>
+        <a href="/stats.html">3 · Статистика датасета</a>
+        <button id="btn-logout">Выйти</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="app" hidden>
+    <div class="stage with-side">
+      <div class="toolbar">
+        <button id="btn-recognize" class="check" title="Прочитать всё, что на холсте">РАСПОЗНАТЬ</button>
+        <button id="btn-undo" title="Убрать последний штрих (Ctrl+Z)">↩ Штрих</button>
+        <button id="btn-redo" title="Вернуть убранный штрих (Ctrl+Shift+Z)" disabled>↪ Штрих</button>
+        <button id="btn-clear" class="btn-clear">CLEAR</button>
+        <button id="btn-copy">Скопировать</button>
+        <span class="grow"></span>
+        <span class="muted small">строки читаются целиком · CTC-модель</span>
+      </div>
+
+      <div class="resultbar">
+        <span class="rb-label">распознанные строки</span>
+        <div id="lines-out" class="lines-out" title="Распознанные строки: наведение — уверенность"></div>
+        <span id="lines-meta" class="lines-meta" hidden></span>
+      </div>
+
+      <div class="status-bar"><p id="app-status" class="status">Инициализация…</p></div>
+
+      <aside class="side-col side-panel">
+        <div id="calib-hint" class="calib-hint" hidden></div>
+        <p class="muted small">
+          Модель работает полностью локально (Web Worker + ONNX Runtime Web, WASM).
+        </p>
+      </aside>
+
+      <div class="pad-field lines-pad">
+        <canvas id="pad"></canvas>
+        <div class="pad-caption">поле рукописного ввода · пишите строки подряд</div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/lines.js"></script>
+</body>
+</html>

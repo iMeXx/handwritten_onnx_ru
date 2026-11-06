@@ -1,0 +1,13 @@
+data/
+work/
+work-*/
+__pycache__/
+*.pyc
+.env
+# локальные артефакты: база почерков (PII, на сервер идёт rsync/sqlite3 .backup,
+# не через git), лог/pid веб-демона, экспортные артефакты ONNX, venv (make venv)
+jsnet/db/
+jsnet/logs/
+export/
+.venv/
+*.log

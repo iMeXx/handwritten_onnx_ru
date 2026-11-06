@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Сбор датасета — inknet-hybrid</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<!-- Сбор написаний для обучающего датасета: автор пишет символы по заданию,
+     сессия сдаётся на сервер (SQLite train_samples) и выгружается JSON в
+     формате inknet-collect/1. -->
+<body>
+  <header>
+    <h1><a href="/">inknet-hybrid</a> <span>сбор датасета · написания по заданию</span></h1>
+    <div class="head-right">
+      <button id="btn-avatar" class="avatar" hidden title="Меню">?</button>
+      <div id="app-menu" class="app-menu" hidden>
+        <a href="/">← Главная</a>
+        <a href="/train.html">1 · Тренировка почерка</a>
+        <a href="/stats.html">3 · Статистика датасета</a>
+        <a href="/lines.html">4 · Распознавание строк</a>
+        <button id="btn-logout">Выйти</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <button id="btn-done" class="check" title="Сохранить написание и перейти к следующему заданию">ГОТОВО</button>
+      <span id="task-chip" hidden></span>
+      <p id="task-text" class="task-text">Загрузка…</p>
+      <span id="session-info" class="muted small"></span>
+    </div>
+
+    <div id="progress" class="cstrip" title="строчные · ЗАГЛАВНЫЕ · цифры 1–9; * — путающая пара"></div>
+
+    <div class="toolbar">
+      <button id="btn-undo" title="Отменить последний штрих (Ctrl+Z)">↩ Штрих</button>
+      <button id="btn-clear">Очистить</button>
+      <button id="btn-drop" title="Вернуть последнее сохранённое написание">Убрать символ</button>
+      <button id="btn-pen" title="Настройки пера и холста">✒ Перо</button>
+      <span class="grow"></span>
+      <button id="btn-json" title="Скачать несданную часть сессии файлом inknet-collect/1">Скачать JSON</button>
+      <button id="btn-export" class="primary" title="Сохранить написания этой сессии на сервере">Сдать сессию</button>
+    </div>
+
+    <div id="pen-panel" class="sb-wrap" hidden></div>
+
+    <div class="pad-field">
+      <canvas id="pad"></canvas>
+      <div id="ghost-char" class="ghost-char" hidden></div>
+      <div class="pad-caption">пишите по крупной подсказке · клетка как в тетради</div>
+    </div>
+
+    <p class="muted small">Написания сохраняются на сервере за вашим профилем и
+      выгружаются в формате <code>inknet-collect/1</code> для обучения модели
+      (<code>make ds</code> читает их наравне с эталонами тренировки).
+      Пишем строчные, ЗАГЛАВНЫЕ и цифры 1–9; цель — 2 написания на символ,
+      4 — на путающие пары (жхз3уцшщф4тг, помечены *).</p>
+  </main>
+
+  <script type="module" src="/js/collect.js"></script>
+</body>
+</html>

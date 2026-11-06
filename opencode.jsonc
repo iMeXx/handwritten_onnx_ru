@@ -1,0 +1,58 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "strata": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Strata-IMG",
+      "options": {
+        "baseURL": "http://192.168.1.25:19019/v1",
+        "apiKey": "sk-strata-_ixYNQ584fPMQavyGyiewgsY67TUSybY"
+      },
+      "models": {
+        "qwen3.8-flash-next-iq3_s": {
+          "name": "Qwen3.8-Flash-Next"
+        }
+      }
+    },
+    "strata2": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Strata-BIG",
+      "options": {
+        "baseURL": "http://192.168.1.25:19019/v1",
+        "apiKey": "sk-strata-RBMeeHoI2cvh4V7ULM0Ucp8UDaNd3YbL"
+      },
+      "models": {
+        "qwen3.8-flash-next-iq3_s": {
+          "name": "Qwen3.8-Flash-Next (local)",
+          "tool_call": true,
+          "reasoning": true,
+          "limit": {
+            "context": 204800,
+            "input": 200704,
+            "output": 16384
+          }
+        }
+      }
+    },
+    "strata-sw": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Strata (swift)",
+      "options": {
+        "baseURL": "http://192.168.1.25:19019/v1",
+        "apiKey": "sk-strata-2CCTEP2MmpJiF4XdTrkaNDJYthT4ATB5"
+      },
+      "models": {
+        "swift-1.5-iq3_s": {
+          "name": "Qwen3.8-Flash-Next (swift)",
+          "tool_call": true,
+          "reasoning": true,
+          "limit": {
+            "context": 131072,
+            "input": 100000,
+            "output": 31072
+          }
+        }
+      }
+    }
+  }
+}
