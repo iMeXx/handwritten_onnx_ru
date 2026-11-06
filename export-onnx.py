@@ -24,7 +24,7 @@ applyStandardize из src/ink-mlp.js — так паддинг-семантик�
 отдельное осознанное решение (боевая модель — растровая line_int8).
 
 Запуск: make export-onnx            (FOLD из .env, по умолчанию 0)
-        ../test-py/venv/bin/python export-onnx.py --fold 0
+        .venv/bin/python export-onnx.py --fold 0   (venv — «make venv»)
 """
 from __future__ import annotations
 

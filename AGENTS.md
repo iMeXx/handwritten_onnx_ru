@@ -36,13 +36,15 @@
 
 ```bash
 make env              # эффективная конфигурация
+make venv             # .venv с torch CPU (проект не привязан к внешним venv;
+                      # dev-машине с GPU — PY= в .env)
 make ds               # свой датасет векторных строк -> data/line-vectors/
 make train            # один режим: MODE=fusion|vector|raster (.env MODE)
 make eval             # CER+примеры по весам режима MODE
 make ablation         # триада raster+vector+fusion на одних строках/сидах + вердикт
 make compare          # вердикт по work/<mode>/summary.json (гейт M2)
 make smoke            # ds+train+eval быстро (ARGS="--epochs 30")
-make parity           # контроль: builder/vendor совпадают с inknet-online
+make parity           # контроль: builder/vendor совпадают с inknet-online (skip без соседнего репозитория)
 make up               # веб-приложение jsnet фоном (демон): тренировка/сбор/статистика/распознавание
                       # (адрес в .env: WEB_HOST/WEB_PORT; down / status / log)
 make merge            # снимок app.db -> data/db/app-merged.db, склейка логинов по людям

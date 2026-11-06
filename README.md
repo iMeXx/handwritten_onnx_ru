@@ -10,6 +10,7 @@ CTC-хедом (Вариант B). Дорожная карта — в [docs/PLAN
 
 | цель make | что делает |
 |---|---|
+| `make venv` | локальный `.venv`: torch CPU + `requirements.txt` (проект не привязан к внешним venv) |
 | `make ds` | свой датасет `inknet-line-vectors/3` из снимка базы написаний `jsnet/db/app.db` (скрипт — байт-копия inknet-online, контроль `make parity`) |
 | `make train` | обучение одного режима: `MODE=fusion\|vector\|raster` |
 | `make eval` | CER по writer-disjoint фолдам + примеры ref→hyp |
@@ -20,8 +21,25 @@ CTC-хедом (Вариант B). Дорожная карта — в [docs/PLAN
 | `make ds-merged` | person-disjoint датасет из снимка → `data/line-vectors-m/` (фолды по людям) |
 | `make ablation-merged` | `merge` + `ds-merged` + триада + вердикт на person-disjoint разрезе; для vector свои `LR_VECTOR`/`EPOCHS_VECTOR` |
 | `make train-merged` · `eval-merged` · `compare-merged` · `smoke-merged` · `clean-merge` | те же шаги по одному; `smoke-merged` — быстрая проверка конвейера (1 фолд, 1 сид) |
-| `make parity` | контроль синхронности общих артефактов с inknet-online |
+| `make parity` | контроль синхронности общих артефактов с inknet-online (на машине без соседнего репозитория — skip) |
 | `make up` / `make down` | поднять / остановить веб-приложение jsnet **фоном** (демоном); `make status`, `make log` |
+
+## Установка на чистой машине
+
+Нужен Python ≥ 3.10 (torch 2.14) и Node ≥ 23 — веб-приложение jsnet работает на
+встроенном `node:sqlite` без npm-зависимостей.
+
+```bash
+git clone <remote> inknet-hybrid && cd inknet-hybrid
+make venv              # .venv: torch CPU (с GPU-машины — PY= в .env, см. requirements.txt)
+cp .env.example .env   # правки не нужны для локального прогона; сервер — в .env.example
+make ds && make smoke ARGS="--epochs 30"   # конвейер: датасет → обучение → оценка
+make up                # веб-приложение: http://127.0.0.1:3210 (make down / status / log)
+```
+
+`make parity` на машине без `../inknet-online` печатает skip — гейт живёт там,
+где есть оба репозитория. Настройку сервера (Ubuntu, systemd, nginx+TLS) см.
+`deploy/` (этап 2) и комментарии в `.env.example`.
 
 ## Триада по людям (person-disjoint) — как гонять
 
