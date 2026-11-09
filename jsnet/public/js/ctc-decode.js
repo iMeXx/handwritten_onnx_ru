@@ -101,8 +101,17 @@ export function buildTrie(normWords) {
  * beam — единственная оставшаяся словарная помощь (внутри воркера).
  * words — norm-термины словаря (см. buildVocab), alpha — символ класса i = alpha[i-1].
  * Формат результата идентичен decodeCTC: {ids, cands, conf}.
+ *
+ * oovPen — вторая ручка той же силы правки: штраф за каждый символ,
+ * вписанный вне словарного пути (тришка сошла на null). Бонус один
+ * односторонний: словарный путь получает +bonus, путь «всё подряд» — ничего.
+ * Бонус+штраф вместе задают силу лексиконного давления: для строк, где слова
+ * почти все словарные (школьный диктант), она оправдана; для текста с именами
+ * и терминами вне словаря oovPen держат малым или нулём — он, в отличие от
+ * бонуса, затирает OOV-написания. oovPen=0 — историческое поведение
+ * (обратная совместимость).
  */
-export function beamDecode(logits, C, { words, alpha, bonus = 2.5, beam = 64 } = {}) {
+export function beamDecode(logits, C, { words, alpha, bonus = 2.5, beam = 64, oovPen = 0 } = {}) {
   if (!alpha) throw new Error("beamDecode: нужен alpha (символы классов)");
   const T = logits.length / C;
   const trie = buildTrie(words || []);
@@ -112,33 +121,35 @@ export function beamDecode(logits, C, { words, alpha, bonus = 2.5, beam = 64 } =
 
   // запись префикса: key = свёрнутая последовательность символов; b/nb — CTC-prefix
   // вероятности (blank / с окончанием на класс); node — узел тришки текущего слова
-  // (null = слово уже вышло за словарь); hits — счёт законченных словарных слов.
-  const start = { key: "", b: 0, nb: new Map(), node: trie, hits: 0, chars: [] };
+  // (null = слово уже вышло за словарь); hits — счёт законченных словарных слов;
+  // oov — счёт символов, ушедших в OOV (штраф oovPen).
+  const start = { key: "", b: 0, nb: new Map(), node: trie, hits: 0, oov: 0, chars: [] };
   let prefixes = new Map([["", start]]);
 
-  const cloneFrame = (p) => ({ key: p.key, b: LOGF, nb: new Map(), node: p.node, hits: p.hits, chars: p.chars });
+  const cloneFrame = (p) => ({ key: p.key, b: LOGF, nb: new Map(), node: p.node, hits: p.hits, oov: p.oov, chars: p.chars });
   const total = (r) => { let s = r.b; for (const lp of r.nb.values()) s = logadd(s, lp); return s; };
 
-  // переход с дописыванием класса c: обновляет тришку и hits
+  // переход с дописыванием класса c: обновляет тришку, hits и oov
   const advance = (p, c) => {
     const ch = chOf(c);
     if (ch === SPACE) {
       const hit = p.node && p.node !== trie && p.node.end;
-      return { node: trie, hits: p.hits + (hit ? 1 : 0) };
+      return { node: trie, hits: p.hits + (hit ? 1 : 0), oov: p.oov };
     }
     if (p.node) {
       const nx = p.node.ch.get(ch);
-      if (nx) return { node: nx, hits: p.hits };
+      if (nx) return { node: nx, hits: p.hits, oov: p.oov };
       if (p.node.end) { // слитное написание: слово словаря закончилось, новое начинается
         const nx2 = trie.ch.get(ch);
-        if (nx2) return { node: nx2, hits: p.hits + 1 };
+        if (nx2) return { node: nx2, hits: p.hits + 1, oov: p.oov };
       }
+      return { node: null, hits: p.hits, oov: p.oov + 1 };
     }
-    return { node: null, hits: p.hits };
+    return { node: null, hits: p.hits, oov: p.oov + 1 };
   };
 
   const finalScore = (r) => {
-    let s = total(r) + r.hits * bonus;
+    let s = total(r) + r.hits * bonus - r.oov * oovPen;
     if (r.node && r.node !== trie && r.node.end) s += bonus; // последнее слово без пробела
     return s;
   };
@@ -177,9 +188,9 @@ export function beamDecode(logits, C, { words, alpha, bonus = 2.5, beam = 64 } =
         let from = p.b;
         for (const [d, dlp] of p.nb) if (d !== c) from = logadd(from, dlp);
         if (from > LOGF) {
-          const { node, hits } = advance(p, c);
+          const { node, hits, oov } = advance(p, c);
           const key = p.key + chOf(c);
-          const r = put(key, () => ({ key, b: LOGF, nb: new Map(), node, hits, chars: p.chars.concat(c) }));
+          const r = put(key, () => ({ key, b: LOGF, nb: new Map(), node, hits, oov, chars: p.chars.concat(c) }));
           r.nb.set(c, logadd(r.nb.get(c) ?? LOGF, from + lp)); // эмиссия класса c в этом кадре
         }
       }

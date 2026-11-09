@@ -181,7 +181,11 @@ self.onmessage = async (e) => {
       const res = await session.run({ image: tensor });
       const dec = useBeam
         ? beamDecode(res.logits.data, res.logits.dims[2],
-            { words: decoder.words, alpha: decoder.alpha, bonus: 2.5, beam: 64 })
+            // бонус 2.5 + oovPen 0.6 — откалибровано на writer-disjoint стенде
+            // (web_onnx/scripts/dec-bench.mjs, 600 строк): CER 0.199->0.182,
+            // точные строки 0.33->0.40; сильный oovPen(>1) ещё чуть лучше на
+            // словарных строках, но затирает имена — для школьного текста 0.6
+            { words: decoder.words, alpha: decoder.alpha, bonus: 2.5, beam: 64, oovPen: 0.6 })
         : decodeCTC(res.logits.data, res.logits.dims[2]);
       stripCache.set(key, dec);
       out.push(dec);

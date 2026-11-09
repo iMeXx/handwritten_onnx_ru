@@ -11,7 +11,7 @@
 // v3 — статус в тулбаре /train.html; v6 — векторное направление закрыто,
 // воркер/препроцессинг/lines.js откатаны к растровому срезу (cache-first
 // отдал бы старые гибридные копии).
-const CACHE = "inknet-jsnet-v6";
+const CACHE = "inknet-jsnet-v7"; // v7: beamDecode oovPen (словарное давление)
 
 self.addEventListener("install", () => self.skipWaiting());
 
