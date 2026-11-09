@@ -168,6 +168,11 @@ a.btnlink {
 /* статусная строка */
 .status-bar { margin: 6px 0; }
 .status { margin: 0; min-height: 20px; color: var(--muted); }
+/* Строка статуса тренировки (train.html) живёт в тулбаре на одной линии с
+   «Очистить»/«✒ Перо»: тянется на остаток строки, текст прижат вправо;
+   длинные сообщения переносятся внутри тулбара (он flex-wrap) — кнопки
+   «Стереть эталоны» остаются у правого края. */
+.toolbar #status { flex: 1 1 auto; text-align: right; min-width: 120px; }
 
 /* вход по имени (паролей нет) */
 .login-wrap { max-width: 420px; margin: 8vh auto 0; padding: 0 16px; }

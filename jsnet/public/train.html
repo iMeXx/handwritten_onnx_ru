@@ -43,7 +43,7 @@
       <button id="btn-undo" title="Отменить последний штрих (Ctrl+Z)">↩ Штрих</button>
       <button id="btn-clear">Очистить</button>
       <button id="btn-pen" title="Настройки пера и холста">✒ Перо</button>
-      <span class="grow"></span>
+      <p id="status" class="status" role="status">Загрузка…</p>
       <button id="btn-wipe" class="danger" title="Удалить все эталоны этого профиля">Стереть эталоны</button>
     </div>
 
@@ -62,8 +62,6 @@
       <div id="ghost-char" class="ghost-char" hidden></div>
       <div class="pad-caption">пишите по крупной подсказке · клетка как в тетради</div>
     </div>
-
-    <div class="status-bar"><p id="status" class="status">Загрузка…</p></div>
 
     <p class="muted small">Эталон — чистое написание символа: после отрыва пера он
       проверяется (гейты мусора + ближайший сосед к вашим эталонам) и сохраняется

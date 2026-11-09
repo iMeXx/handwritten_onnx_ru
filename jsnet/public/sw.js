@@ -7,8 +7,11 @@
 // На http://IP (локальная сеть, не Secure Context) service worker недоступен —
 // регистрация молча не срабатывает, страница работает без кэша.
 // При обновлении модели/словаря/ort — поднимите версию CACHE (старые кэши
-// вычищаются в activate).
-const CACHE = "inknet-jsnet-v1";
+// вычищаются в activate). v2 — новая растровая модель (line_int8.onnx/.ort);
+// v3 — статус в тулбаре /train.html; v6 — векторное направление закрыто,
+// воркер/препроцессинг/lines.js откатаны к растровому срезу (cache-first
+// отдал бы старые гибридные копии).
+const CACHE = "inknet-jsnet-v6";
 
 self.addEventListener("install", () => self.skipWaiting());
 

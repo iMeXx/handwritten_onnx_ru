@@ -1,40 +1,31 @@
-# inknet-hybrid — вариант B: растровая CNN + векторная ветка штрихов, общий
-# CTC-хед. САМОСТОЯТЕЛЬНЫЙ проект: свой скрипт датасета (копия inknet-online,
-# байт-идентичная — цель parity), свои vendor-порты растра/LineNet, своё
-# обучение трёх режимов (raster / vector / fusion) и своя оценка.
+# inknet-hybrid — проект сбора написаний + датасетный конвейер. Модель
+# распознавания — боевая растровая line_int8 (живёт в ../inknet-train,
+# обучение/дообучение/экспорт делаются там). Векторная ветка и аблейшн-триада
+# закрыты по итогам эксперимента (см. README), обучать здесь больше нечего:
+# python-код (train/eval/compare/hybridnet) удалён.
 #
-# Конфигурация в .env (см. .env.example). Параллельно с inknet-online гоняется
-# без пересечений: свои DATA_DIR/WORK_DIR, никаких кросс-записей.
+# Здесь живут: веб-приложение jsnet (тренировка эталонов, сбор написаний,
+# статистика, распознавание строк строковой моделью), скрипт датасета
+# (байт-копия inknet-online — контроль make parity), склейка людей
+# (merge) и деплой веб-приложения на Ubuntu.
+#
+# Конфигурация в .env (см. .env.example).
 -include .env
 export
 
-# PY по умолчанию — локальный venv (make venv), чтобы проект жил на любой
-# машине без внешних venv; dev-машина с CUDA torch перебивает путём в .env.
-PY ?= .venv/bin/python
-# torch ставится с CPU-индекса: на сервере без GPU дефолтный wheel с PyPI
-# тянет nvidia-* ~3 ГБ; GPU-машине нужен cu-вариант (см. requirements.txt)
-TORCH ?= torch==2.14.0
-TORCH_INDEX ?= https://download.pytorch.org/whl/cpu
 NODE ?= node
 WEB_ONNX ?= jsnet
 ONLINE ?= ../inknet-online
-DATA_DIR ?= data/line-vectors
-WORK_DIR ?= work
-MODE ?= fusion
-MODES ?= raster vector fusion
-EPOCHS ?= 300
-BATCH ?= 16
-LR ?= 2e-3
-PATIENCE ?= 60
-SEED ?= 7
-RUNS ?= 1
-# FOLD нужен export-onnx (один фолд для онзк-веса). Осторожно: из-за `export`
-# в начале файла он попадает в окружение всех рецептов, а train.py берёт
-# --fold из окружения (FOLD) — без явного --fold обучение молча идёт по
-# ОДНОМУ фолду, хотя гейт M2 требует все фолды. Поэтому обучение всегда
-# получает TRAIN_FOLD явно.
-FOLD ?= 0
-TRAIN_FOLD ?= all
+DATA_DIR ?= data/line-vectors-m
+DATA_DIR_M ?= data/line-vectors-m
+# --- person-disjoint разрез (см. docs/DATASET-AUDIT-2026-11-05.md) ---
+# в jsnet/db/app.db за одного человека по несколько логинов (etel1/Etel2,
+# Vika1/Vika2, Dima1/Dima2 — сдали с iPad и планшета в один день), билдер
+# группирует по username, поэтому фолды протекают. Склейка логинов делается в
+# СНИМКЕ базы (scripts/merge-writers.mjs), сам билдер не правится — гейт parity
+# остаётся зелёным.
+MERGED_DB ?= data/db/app-merged.db
+WRITERS_MAP ?= scripts/writers-merge.json
 # веб-приложение jsnet (make up/down/status/log). Комментарии отдельной строкой: в make хвостовой
 # комментарий после присваивания оставляет в значении пробелы — они потом
 # всплывают в склеенных строках вроде http://$(WEB_HOST):$(WEB_PORT)
@@ -44,41 +35,10 @@ WEB_HOST ?= 127.0.0.1
 WEB_PID ?= jsnet/logs/web.pid
 WEB_LOG ?= jsnet/logs/web.log
 ARGS ?=
-# --- person-disjoint разрез (см. docs/DATASET-AUDIT-2026-11-05.md) ---
-# в jsnet/db/app.db за одного человека по несколько логинов (etel1/Etel2,
-# Vika1/Vika2, Dima1/Dima2 — сдали с iPad и планшета в один день), билдер
-# группирует по username, поэтому фолды протекают. Склейка логинов делается в
-# СНИМКЕ базы (scripts/merge-writers.mjs), сам билдер не правится — гейт parity
-# остаётся зелёным.
-MERGED_DB ?= data/db/app-merged.db
-WRITERS_MAP ?= scripts/writers-merge.json
-DATA_DIR_M ?= data/line-vectors-m
-WORK_DIR_M ?= work-merged
-# векторная ветка на LR=2e-3 не обучается вовсе (CER ~0.9, гипотеза-константа;
-# при 2e-4 — 0.27 на том же разрезе), поэтому для vector LR отдельный
-LR_VECTOR ?= 2e-4
-# и на низком LR вектор сходится медленнее (лучшие CER на 300–400 эпохах)
-EPOCHS_VECTOR ?= 400
-PATIENCE_VECTOR ?= 120
-# fusion: 1 = fuse стартует тождественно растровому входу (векторные столбцы весов
-# обнулены), то есть гибрид начинается как чистый растр, а вектор добавляется
-# постепенно. Лечит CTC-коллапс гибрида на общем LR. Архитектура и ONNX-граф не
-# меняются — меняется только инициализация.
-FUSE_RASTER_START ?= 0
-FUSE_FLAG = $(if $(filter 1 true yes on,$(FUSE_RASTER_START)),--fuse-raster-start,)
-# fusion: доля примеров обучения с обнулённым векторным потоком целиком (modality
-# dropout). Без него вектор = «отпечаток автора»: гибрид заучивает авторов обучения
-# и на новом человеке хуже чистого растра. 0 = выключено.
-VEC_DROP ?= 0
-
-TRAIN_ARGS = --data $(DATA_DIR) --out $(WORK_DIR) --epochs $(EPOCHS) \
-             --batch $(BATCH) --lr $(LR) --lr-vector $(LR_VECTOR) --patience $(PATIENCE) \
-             --seed $(SEED) --runs $(RUNS) --fold $(TRAIN_FOLD) $(FUSE_FLAG) --vec-drop $(VEC_DROP)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help env venv py-check ds train eval ablation compare smoke parity export-onnx up down status log clean \
-        merge ds-merged train-merged eval-merged ablation-merged compare-merged clean-merge smoke-merged \
+.PHONY: help env guard-merged ds merge clean-merge ds-merged parity up down status log clean \
         deploy-check deploy-push deploy-install deploy-db deploy-logs deploy-status \
         deploy-push-local deploy-install-local deploy-db-local deploy-logs-local deploy-status-local
 
@@ -86,41 +46,23 @@ help: ## список целей
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS=":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
 
 env: ## показать эффективную конфигурацию (.env + дефолты)
-	@printf 'PY=%s NODE=%s WEB_ONNX=%s\nDATA_DIR=%s WORK_DIR=%s MODE=%s\nEPOCHS=%s EPOCHS_VECTOR=%s BATCH=%s LR=%s LR_VECTOR=%s PATIENCE=%s PATIENCE_VECTOR=%s SEED=%s RUNS=%s TRAIN_FOLD=%s FOLD=%s\nMERGED_DB=%s WRITERS_MAP=%s DATA_DIR_M=%s WORK_DIR_M=%s\nWEB_PORT=%s WEB_HOST=%s\n' \
-	  "$(PY)" "$(NODE)" "$(WEB_ONNX)" "$(DATA_DIR)" "$(WORK_DIR)" "$(MODE)" "$(EPOCHS)" "$(EPOCHS_VECTOR)" "$(BATCH)" "$(LR)" "$(LR_VECTOR)" "$(PATIENCE)" "$(PATIENCE_VECTOR)" "$(SEED)" "$(RUNS)" "$(TRAIN_FOLD)" "$(FOLD)" "$(MERGED_DB)" "$(WRITERS_MAP)" "$(DATA_DIR_M)" "$(WORK_DIR_M)" "$(WEB_PORT)" "$(WEB_HOST)"
+	@printf 'NODE=%s WEB_ONNX=%s ONLINE=%s\nDATA_DIR=%s DATA_DIR_M=%s\nMERGED_DB=%s WRITERS_MAP=%s\nWEB_PORT=%s WEB_HOST=%s\n' \
+	  "$(NODE)" "$(WEB_ONNX)" "$(ONLINE)" "$(DATA_DIR)" "$(DATA_DIR_M)" "$(MERGED_DB)" "$(WRITERS_MAP)" "$(WEB_PORT)" "$(WEB_HOST)"
 
-venv: ## создать .venv (torch CPU) и установить requirements.txt
-	python3 -m venv .venv
-	.venv/bin/pip install --upgrade pip
-	.venv/bin/pip install $(TORCH) --index-url $(TORCH_INDEX)
-	.venv/bin/pip install -r requirements.txt
-	@echo "готово: PY=$(PY) (dev-машина с GPU — PY= в .env и cu-wheel из requirements.txt)"
+# --- гейт: цель логин-разреза не должна писать в person-disjoint разрез ---
+# .env переводит DATA_DIR на разрез по людям (он единственный валидный,
+# правило 7), а ds работает именно с DATA_DIR: без гейта `make ds` пересобрал
+# бы датасет по ЛОГИНАМ поверх data/line-vectors-m (один человек заведён
+# двумя логинами — фолды протекают). Цель по людям — ds-merged.
+guard-merged:
+	@bad=""; \
+	case "$(DATA_DIR)" in "$(DATA_DIR_M)") bad="DATA_DIR=$(DATA_DIR)";; esac; \
+	test -z "$$bad" -o -n "$(FORCE_MERGED)" \
+	  || { echo "эта цель пишет в $$bad, а это person-disjoint разрез: датасет соберётся по логинам и затрёт разрез по людям"; \
+	       echo "нужно: ds-merged; осознанно пересобрать этим же скриптом: FORCE_MERGED=1"; exit 1; }
 
-# понятная ошибка вместо «python: not found» посреди долгого обучения
-py-check:
-	@command -v "$(PY)" >/dev/null 2>&1 || test -x "$(PY)" \
-	  || { echo "PY=$(PY) не найден — 'make venv' (CPU) или путь к venv с torch в .env"; exit 1; }
-
-ds: ## собрать общий датасет векторных строк из снимка базы jsnet/db -> $(DATA_DIR)/
+ds: guard-merged ## собрать датасет строк из снимка базы jsnet/db -> $(DATA_DIR)/
 	$(NODE) scripts/build-line-vector-ds.mjs $(DATA_DIR)
-
-train: py-check ## обучение одного режима (MODE=fusion|vector|raster) по всем фолдам
-	$(PY) train.py $(TRAIN_ARGS) --mode $(MODE) $(ARGS)
-
-eval: py-check ## оценка весов режима MODE + примеры ref->hyp
-	$(PY) eval.py --data $(DATA_DIR) --work $(WORK_DIR) --mode $(MODE) $(ARGS)
-
-ablation: py-check ## триада raster+vector+fusion на одних строках/сидах, затем сравнение
-	@for m in $(MODES); do \
-	  echo "=== ablation: $$m ==="; \
-	  $(PY) train.py $(TRAIN_ARGS) --mode $$m $(ARGS) || exit 1; \
-	done
-	$(PY) compare.py --work $(WORK_DIR)
-
-compare: py-check ## вердикт по work/<mode>/summary.json (гейт M2: -5% относительно raster)
-	$(PY) compare.py --work $(WORK_DIR)
-
-smoke: ds train eval ## быстрый прогон конвейера (укоротите эры: ARGS="--epochs 30")
 
 merge: ## снимок базы jsnet/db/app.db + склейка логинов одного человека в одного автора -> $(MERGED_DB)
 	@mkdir -p $$(dirname $(MERGED_DB))
@@ -132,44 +74,6 @@ clean-merge: ## удалить снимок базы со склейкой (ис
 ds-merged: merge ## датасет по person-disjoint разрезу (фолды по людям) -> $(DATA_DIR_M)/
 	DB_PATH=$(MERGED_DB) $(NODE) scripts/build-line-vector-ds.mjs $(DATA_DIR_M)
 
-train-merged: py-check ## обучение одного режима (MODE=...) на person-disjoint датасете
-	@case "$(MODE)" in \
-	  vector) lr=$(LR_VECTOR); ep=$(EPOCHS_VECTOR); pat=$(PATIENCE_VECTOR);; \
-	  *) lr=$(LR); ep=$(EPOCHS); pat=$(PATIENCE);; \
-	esac; \
-	echo "train: $(MODE) (lr=$$lr epochs=$$ep patience=$$pat fold=$(TRAIN_FOLD))"; \
-	$(PY) train.py --data $(DATA_DIR_M) --out $(WORK_DIR_M) --epochs $$ep --batch $(BATCH) --lr $$lr --lr-vector $(LR_VECTOR) --patience $$pat --seed $(SEED) --runs $(RUNS) --fold $(TRAIN_FOLD) --mode "$(MODE)" $(FUSE_FLAG) --vec-drop $(VEC_DROP) $(ARGS)
-
-eval-merged: py-check ## оценка весов режима MODE на person-disjoint датасете + примеры
-	$(PY) eval.py --data $(DATA_DIR_M) --work $(WORK_DIR_M) --mode $(MODE) $(ARGS)
-
-ablation-merged: ds-merged py-check ## триада raster+vector+fusion по ЛЮДЯМ (LR/эпохи для vector отдельные) + вердикт
-	@for m in $(MODES); do \
-	  case $$m in \
-	    vector) lr=$(LR_VECTOR); ep=$(EPOCHS_VECTOR); pat=$(PATIENCE_VECTOR);; \
-	    *) lr=$(LR); ep=$(EPOCHS); pat=$(PATIENCE);; \
-	  esac; \
-	  echo "=== ablation: $$m (lr=$$lr epochs=$$ep patience=$$pat fold=$(TRAIN_FOLD)) ==="; \
-	  $(PY) train.py --data $(DATA_DIR_M) --out $(WORK_DIR_M) --epochs $$ep --batch $(BATCH) --lr $$lr --lr-vector $(LR_VECTOR) --patience $$pat --seed $(SEED) --runs $(RUNS) --fold $(TRAIN_FOLD) --mode $$m $(FUSE_FLAG) --vec-drop $(VEC_DROP) $(ARGS) || exit 1; \
-	done
-	$(PY) compare.py --work $(WORK_DIR_M)
-
-compare-merged: py-check ## вердикт по $(WORK_DIR_M)/<mode>/summary.json (гейт M2: -5% относительно raster)
-	$(PY) compare.py --work $(WORK_DIR_M)
-
-smoke-merged: ds-merged py-check ## быстрая проверка конвейера на людях: триада, 1 фолд, 1 сид
-	# эпохи не укорачиваем: CTC-раскатка зависит от числа шагов, а на 600 строках
-	# фолда шаг в 2.5 раза короче, чем на 1500 (60 эпох => недотрен, CER ~0.9)
-	@for m in $(MODES); do \
-	  case $$m in \
-	    vector) lr=$(LR_VECTOR); ep=$(EPOCHS_VECTOR); pat=$(PATIENCE_VECTOR);; \
-	    *) lr=$(LR); ep=$(EPOCHS); pat=$(PATIENCE);; \
-	  esac; \
-	  echo "=== smoke: $$m (lr=$$lr, epochs=$$ep) ==="; \
-	  $(PY) train.py --data $(DATA_DIR_M) --out $(WORK_DIR_M) --epochs $$ep --batch $(BATCH) --lr $$lr --patience $$pat --seed $(SEED) --runs 1 --fold 0 --mode $$m || exit 1; \
-	done
-	$(PY) compare.py --work $(WORK_DIR_M)
-
 parity: ## контроль, что общие артефакты синхронны с inknet-online (read-only; skip без соседнего репозитория)
 	@# всё в одной shell-строке: exit 0 в guard-строке завершила бы только её,
 	@# и make пошёл бы дальше сравнить с несуществующим соседом
@@ -179,13 +83,7 @@ parity: ## контроль, что общие артефакты синхрон
 	  cmp -s scripts/build-line-vector-ds.mjs $(ONLINE)/scripts/build-line-vector-ds.mjs \
 	    && echo "builder: OK (байт-в-байт как в inknet-online)" \
 	    || { echo "builder РАСХОДИТСЯ с $(ONLINE) — синхронизируйте вручную"; exit 1; }; \
-	  cmp -s hybridnet/vendor/raster.py $(ONLINE)/vecnet/vendor/raster.py \
-	    && echo "vendor raster: OK" \
-	    || { echo "vendor raster РАСХОДИТСЯ с $(ONLINE)"; exit 1; }; \
 	fi
-
-export-onnx: py-check ## экспорт HybridNet (fusion, вес фолда FOLD) в ONNX (export/) + std/манифест
-	$(PY) export-onnx.py --data $(DATA_DIR) --work $(WORK_DIR) --fold $(FOLD)
 
 up: ## поднять веб-приложение jsnet фоном (демоном): тренировка/сбор/статистика
 	@if [ -f $(WEB_PID) ] && kill -0 $$(cat $(WEB_PID)) 2>/dev/null; then \
@@ -226,8 +124,11 @@ status: ## состояние фонового веб-приложения + п�
 log: ## последние 30 строк лога веб-приложения
 	@test -f $(WEB_LOG) && tail -n 30 $(WEB_LOG) || echo "лога ещё нет ($(WEB_LOG))"
 
-clean: ## удалить датасеты (обычный и person-disjoint) и веса
-	rm -rf $(DATA_DIR) $(WORK_DIR) $(DATA_DIR_M) $(WORK_DIR_M)
+clean: ## удалить датасеты (обычный и person-disjoint); веса work-merged/raster НЕ трогает
+	@echo "удаляю: $(DATA_DIR) $(DATA_DIR_M)"
+	@# work-merged/raster — writer-disjoint бейзлайн растра (сравнение при
+	@# дообучении line_int8), в clean не входит; удалять осознанно руками
+	rm -rf $(DATA_DIR) $(DATA_DIR_M)
 
 # --- деплой на Ubuntu (этап 2): доставка кода rsync (git-remote и ssh для
 # деплоя не обязательны: targets *-local для случая «сервер = эта машина»),
