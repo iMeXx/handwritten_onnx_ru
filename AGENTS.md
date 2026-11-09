@@ -1,131 +1,143 @@
 # AGENTS.md — inknet-hybrid
 
-Инструкции для агентных помощников. Статус и точка входа — `README.md`,
-разбор данных — `docs/DATASET-AUDIT-2026-11-05.md`.
+Instructions for agent assistants. Status and entry point — `README.md`,
+data audit — `docs/DATASET-AUDIT-2026-11-05.md`.
 
-## Контекст
+## Never launch training runs! If training is needed — tell the user!
 
-Проект **сбора написаний и датасетного конвейера**. Модель распознавания строк —
-боевая растровая **`line_int8`**; её обучение/дообучение/экспорт живут в
-`../inknet-train` (этот репозиторий модель не обучает). Векторная ветка штрихов
-и аблейшн-триада («Вариант B») **закрыты** по итогам эксперимента 2026-11:
-на person-disjoint триаде растр лучший (raster 0.454 / vector 0.575 /
-fusion 0.657 CER), пер-user блендинг логитов (сетка α) даёт α\*=0 — вектор к
-боевой модели ничего не добавляет. Векторный/гибридный код (модели, train/eval,
-экспорт, селектор в воркере) **удалён**; переобучать это направление не нужно
-без явного запроса.
+## Context
 
-Здесь живут: веб-приложение `jsnet/` (тренировка эталонов, плановый сбор
-написаний, статистика, распознавание строк), скрипт датасета
-(`scripts/build-line-vector-ds.mjs` — байт-копия из `../inknet-online`, контроль
-`make parity`), склейка людей (`scripts/merge-writers.mjs` + карта
-`writers-merge.json`) и деплой (`deploy/`).
+This project is **handwriting collection and the dataset pipeline**. The line
+recognition model is the production raster **`line_int8`**; its
+training/finetuning/export live in `../inknet-train` (this repo does not train
+models). The vector stroke branch and the ablation triad ("Variant B") are
+**closed** per the 2026-11 experiment: on the person-disjoint triad raster wins
+(raster 0.454 / vector 0.575 / fusion 0.657 CER), per-user logit blending (the
+α grid) yields α\* = 0 — the vector branch adds nothing to the production
+model. Vector/hybrid code (models, train/eval, export, the worker's hybrid
+selector) has been **deleted**; do not retrain this direction without an
+explicit request.
 
-Связанные репозитории (не редактировать без явного запроса):
+What lives here: the web app `jsnet/` (reference training, planned handwriting
+collection, dataset statistics, line recognition), the dataset script
+(`scripts/build-line-vector-ds.mjs` — a byte-copy from `../inknet-online`,
+gated by `make parity`), writer merging (`scripts/merge-writers.mjs` + the
+`writers-merge.json` map) and deployment (`deploy/`).
 
-- `../inknet-train` — боевая растровая модель `line_int8`: обучение, дообучение
-  (`--init`, `--refs`, `--inbox`), экспорт ONNX (fp32 → int8 `quantize_dynamic`),
-  оценка, деплой модели;
-- `../inknet-online` — сосед по эксперименту (вектор-нативная модель); общий
-  формат датасета `inknet-line-vectors/3` и общий скрипт-билдер (байт-копия,
-  контроль `make parity`);
-- `jsnet/` — самодостаточный vendor-слой данных: эталонные JS-экстракторы
-  (`jsnet/src/{ink-features,ink-mlp}.js`), снимок базы написаний (`jsnet/db/app.db`,
-  обновляется копированием файла из сборочного приложения), `vocab`/`terms`.
-  Переменная `WEB_ONNX` (=jsnet) — имя задано parity-зафиксированным билдером.
-  В `jsnet/{server,public}` живёт и локальное веб-приложение (`make up`): тренировка
-  эталонов, плановый сбор написаний, статистика датасета, распознавание
-  строк (`/lines.html`: ONNX в Web Worker, WASM-only; модель одна — боевая растровая
-  `line_int8`, воркер кэширует сессию по url) — всё пишет
-  в ту же `app.db`; вход — по имени автора, без паролей и регистрации (сессия —
-  cookie `sid`); QC написаний — nearest-neighbor по `ink-features` (не ONNX);
-  перо настраиваемое (кнопка «✒ Перо»), `js/{pen,settings,pensettings,capture}.js` —
-  байтовые копии, правки на месте не делать (синхронизация `cp`); распознавание:
-  `js/{ctc-decode,line-preprocess,dict}.js` и `js/vendor/onnxruntime/` — байтовые
-  копии, а `js/{lines,line.worker}.js` — порты с адаптацией (shell-вход, локальный
-  ort без WebGPU), пайплайн 1-в-1.
+Related repositories (do not edit without an explicit request):
 
-## Команды
+- `../inknet-train` — the production raster model `line_int8`: training,
+  finetuning (`--init`, `--refs`, `--inbox`), ONNX export (fp32 → int8
+  `quantize_dynamic`), evaluation, model deployment;
+- `../inknet-online` — the sibling experiment repo (a vector-native model);
+  shared dataset format `inknet-line-vectors/3` and the shared builder script
+  (byte-copy, gated by `make parity`);
+- `jsnet/` — a self-contained vendor data layer: reference JS extractors
+  (`jsnet/src/{ink-features,ink-mlp}.js`), a snapshot of the handwriting
+  database (`jsnet/db/app.db`, updated by copying the file from the build
+  app), `vocab`/`terms`. The variable `WEB_ONNX` (= jsnet) — the name is fixed
+  by the parity-pinned builder. The local web app also lives in
+  `jsnet/{server,public}` (`make up`): reference training, planned collection,
+  dataset statistics, line recognition (`/lines.html`: ONNX in a Web Worker,
+  WASM-only; a single model — the production raster `line_int8`, the worker
+  caches the session per url) — all of it writes to the same `app.db`;
+  login by author name, no passwords, no registration (the session is the
+  `sid` cookie); handwriting QC is nearest-neighbor over `ink-features`
+  (not ONNX); the pen is configurable (the "✒ Pen" button),
+  `js/{pen,settings,pensettings,capture}.js` are byte-copies — do not edit
+  them in place (sync via `cp`); recognition:
+  `js/{ctc-decode,line-preprocess,dict}.js` and `js/vendor/onnxruntime/` are
+  byte-copies, while `js/{lines,line.worker}.js` are ports with adaptations
+  (shell entry point, local ort without WebGPU), the pipeline is 1-to-1.
+
+## Commands
 
 ```bash
-make env              # эффективная конфигурация
-make ds               # датасет строк (логин-разрез) -> data/line-vectors/
-make merge            # снимок app.db -> data/db/app-merged.db, склейка логинов по людям
-make ds-merged        # person-disjoint датасет из снимка -> data/line-vectors-m/
-make parity           # контроль: builder совпадает с inknet-online (skip без соседнего репозитория)
-make up               # веб-приложение jsnet фоном (демон): тренировка/сбор/статистика/распознавание
-                      # (адрес в .env: WEB_HOST/WEB_PORT; down / status / log)
-make clean            # удалить датасеты (work-merged/raster НЕ трогает)
-make deploy-push      # rsync кода на ssh-сервер DEPLOY_SSH=user@host в /opt/inknet
-make deploy-install   # установка веб-приложения на Ubuntu: node24+systemd+nginx
-                      # TLS: certbot или готовые DEPLOY_CERT/DEPLOY_KEY
-make deploy-db        # снимок локальной app.db -> сервер (sqlite3 .backup, не cp)
-make deploy-status    # systemctl-состояние и таймер бэкапа (deploy-logs — журнал)
-                      # сервер = эта машина: цели *-local (sudo, без ssh);
-                      # домен/порт/сертификаты: DEPLOY_DOMAIN/WEB_PORT/DEPLOY_CERT/DEPLOY_KEY,
-                      # подробности — docs/DEPLOY.md
+make env              # effective configuration
+make ds               # line dataset (login split) -> data/line-vectors/
+make merge            # app.db snapshot -> data/db/app-merged.db, merge logins per person
+make ds-merged        # person-disjoint dataset from the snapshot -> data/line-vectors-m/
+make parity           # gate: the builder matches inknet-online (skips without the sibling repo)
+make up               # jsnet web app as a background daemon: training/collection/stats/recognition
+                      # (address in .env: WEB_HOST/WEB_PORT; down / status / log)
+make clean            # delete the datasets (does NOT touch work-merged/raster)
+make deploy-push      # rsync the code to the ssh server DEPLOY_SSH=user@host into /opt/inknet
+make deploy-install   # install the web app on Ubuntu: node24 + systemd + nginx
+                      # TLS: certbot or ready-made DEPLOY_CERT/DEPLOY_KEY
+make deploy-db        # snapshot of the local app.db -> server (sqlite3 .backup, not cp)
+make deploy-status    # systemctl state and the backup timer (deploy-logs — the service log)
+                      # server = this machine: *-local targets (sudo, no ssh);
+                      # domain/port/certs: DEPLOY_DOMAIN/WEB_PORT/DEPLOY_CERT/DEPLOY_KEY,
+                      # details in docs/DEPLOY.md
 ```
 
-Модель (`line_int8`) обслуживается целями `../inknet-train`
-(`train/eval/export/deploy`), не отсюда. Дефолт `.env` —
-`DATA_DIR=data/line-vectors-m` (единственный валидный разрез): логин-разрез
-удалён как протекающий по почерку (правило 2), поэтому цель `ds` останавливает
-`guard-merged` — она затёрла бы датасет по людям; обход осознанно — `FORCE_MERGED=1`.
-Растровые веса writer-disjoint бейзлайна — `work-merged/raster/` (точка сравнения
-при дообучении `line_int8`, не удалять).
+The model (`line_int8`) is managed by the `../inknet-train` targets
+(`train/eval/export/deploy`), not from here. The `.env` default is
+`DATA_DIR=data/line-vectors-m` (the only valid split): the login split was
+deleted as handwriting-leaky (rule 2), so the `ds` target is stopped by
+`guard-merged` — it would rebuild the dataset by logins over the person-based
+one; the deliberate escape hatch is `FORCE_MERGED=1`. The raster writer-disjoint
+baseline weights live in `work-merged/raster/` (the comparison point when
+finetuning `line_int8`, do not delete).
 
-## Правила проекта
+## Project rules
 
-1. **Контракты клиента неприкосновенны**: blank=0, `line_vocab.json[i-1]`,
-   `logits [B,T,C]`; воркер `/lines.html` грузит `line_int8` (+`.ort`).
-   Расширение алфавита = синхронная правка vocab + клиента + тренировщика
-   (`../inknet-train`).
-2. **Оценка только writer-disjoint и по людям, а не по логинам**: в `app.db` у
-   одного человека по несколько аккаунтов (сдача с двух устройств), билдер
-   группирует по `username` → фолды пересекаются по почерку. Группировка
-   делается в снимке базы (`make merge` → `data/db/app-merged.db`, карта
-   `scripts/writers-merge.json`), сам билдер не правится (гейт `make parity`).
-3. **Vendor вместо зависимостей / паритет копий**: билдер датасета и
-   `js/{pen,settings,pensettings,capture,ctc-decode,line-preprocess,dict}.js` +
-   `js/vendor/onnxruntime/` — байтовые копии, синхронизация `cp`, правки на
-   месте не делать; `make parity` ловит расхождение билдера с inknet-online.
-4. **После нового экспорта модели** — синхронизировать
-   `jsnet/public/models/line_int8.onnx` + `.ort` и поднять `CACHE` в
-   `jsnet/public/sw.js` (иначе cache-first отдаст старую модель).
-5. **Модель не квантифицируется для обучения**: дообучение только fp32
-   (низкий LR, контроль CER по своим авторам на забывание), затем
-   `quantize_dynamic`-экспорт и проверка 100% совпадения greedy int8↔fp32 —
-   всё это в `../inknet-train`.
+1. **Client contracts are untouchable**: blank=0, `line_vocab.json[i-1]`,
+   `logits [B,T,C]`; the `/lines.html` worker loads `line_int8` (+`.ort`).
+   Extending the alphabet = a synchronized edit of the vocab + the client +
+   the trainer (`../inknet-train`).
+2. **Evaluate writer-disjoint and per person, not per login**: `app.db` has
+   several accounts per person (submissions from two devices), the builder
+   groups by `username` → folds leak by handwriting. The grouping is done in
+   the database snapshot (`make merge` → `data/db/app-merged.db`, the map
+   `scripts/writers-merge.json`); the builder itself must not be touched (the
+   `make parity` gate).
+3. **Vendor instead of dependencies / byte-copy parity**: the dataset builder
+   and `js/{pen,settings,pensettings,capture,ctc-decode,line-preprocess,dict}.js`
+   + `js/vendor/onnxruntime/` are byte-copies, synced with `cp` — do not edit
+   them in place; `make parity` catches builder drift from inknet-online.
+4. **After a new model export** — synchronize
+   `jsnet/public/models/line_int8.onnx` + `.ort` and bump `CACHE` in
+   `jsnet/public/sw.js` (otherwise cache-first serves the old model).
+5. **The model is never quantized for training**: finetuning is fp32 only
+   (low LR, monitor CER on the author's own data to catch forgetting), then
+   `quantize_dynamic` export and a 100% greedy int8↔fp32 match check — all of
+   this lives in `../inknet-train`.
 
-## Известные грабли
+## Known pitfalls
 
-- Родные проекты оставили следы ошибок: NaN→`null` в JSON, evaluate «против
-  самой себя», вложенный spread typed-arrays, коррелирующие строки у
-  mulberry32 на арифметических сидах. Правила в `../inknet-online/AGENTS.md`;
-  переносить код — переносить и проверки.
-- Малый объём данных даёт разброс CER ±0.15 на прогон — не сравнивать модели
-  по одному обучению; `TEST_LINES=120`, не 30.
-- Векторная ветка на общем `LR=2e-3` не обучается вообще (CTC-коллапс к
-  константе, CER ~0.9) — направление закрыто, цифра оставлена как предостережение
-  при работе с inknet-online.
-- `COLLATE NOCASE` в SQLite складывает только латиницу: кириллические имена
-  авторов «Инна»/«инна» — разные строки, и один почерк заводится двумя авторами,
-  что ломает writer-disjoint. Имена сравниваем в JS (`findUserByName` в
-  `jsnet/server/index.js`), а не `WHERE username = ?`.
-- POST-тело в `jsnet/server/index.js` копится `Buffer`-чанками и декодируется
-  один раз: строковая склейка (`body += chunk`) режет многобайтовый UTF-8 на
-  границе чанка, символы превращаются в U+FFFD и большая сдача сессии с планшета
-  отбивается с «некорректное написание» (клиент показывал «сервер не принял»).
-- Chromium на Android в `getCoalescedEvents()` подмешивает pointer-события с
-  NaN-координатами: экспоненциальный сглаживающий фильтр `capture.js` расползается
-  NaN по всему штриху, `JSON.stringify` пишет `null` вместо чисел, и `validStrokes`
-  отклоняет из-за одного написания ВЕСЬ батч `/api/train` (all-or-nothing →
-  «сдано 0, остальное в буфере»). `pointercancel` (угон жеста браузером) оставлял
-  штрих из 1 точки — контракт требует ≥2. Guard'ы: конечность координат в
-  `_addPoint` и `≥2` в `finish` (`src/capture.js` — байтовая копия, синхронизация `cp`),
-  санитизация пачки перед сдачей в `collect.js` (бракованные writing'и убираются
-  из буфера со списком символов, а не глушат сдачу).
+- The parent projects left bug fingerprints: NaN→`null` in JSON, evaluating
+  "against yourself", nested spread of typed arrays, mulberry32 correlated
+  rows on arithmetic seeds. The full rules are in `../inknet-online/AGENTS.md`;
+  when porting code, port the checks too.
+- The small data volume gives CER spread ±0.15 per run — never compare models
+  from a single training run; `TEST_LINES=120`, not 30.
+- The vector branch does not train at all at the shared `LR=2e-3` (CTC collapse
+  to a constant, CER ~0.9) — this direction is closed; the number is kept as a
+  warning when working with inknet-online.
+- `COLLATE NOCASE` in SQLite folds Latin letters only: Cyrillic author names
+  «Инна»/«инна» are distinct strings, and one hand becomes two authors, which
+  breaks writer-disjoint. Compare names in JS (`findUserByName` in
+  `jsnet/server/index.js`), not `WHERE username = ?`.
+- The POST body in `jsnet/server/index.js` accumulates `Buffer` chunks and is
+  decoded once: string concatenation (`body += chunk`) mangles multibyte UTF-8
+  at the chunk boundary, characters turn into U+FFFD, and a large tablet
+  session submission is rejected with "invalid handwriting" (the client showed
+  "the server did not accept it").
+- Chromium on Android mixes pointer events with NaN coordinates into
+  `getCoalescedEvents()`: the exponential smoothing filter in `capture.js`
+  spreads NaN across the whole stroke, `JSON.stringify` writes `null` instead
+  of numbers, and `validStrokes` rejects the ENTIRE `/api/train` batch because
+  of one writing (all-or-nothing → "submitted 0, the rest stay in the buffer").
+  `pointercancel` (the browser hijacks the gesture) left a 1-point stroke —
+  the contract requires ≥2. Guards: coordinate finiteness in `_addPoint` and
+  `≥2` in `finish` (`src/capture.js` — a byte-copy, sync with `cp`), batch
+  sanitization before submission in `collect.js` (broken writings are removed
+  from the buffer with their character list printed, instead of blocking the
+  submission).
 
-## Стиль
+## Style
 
-- Комментарии русские, объясняют «почему» (методология, ограничения).
+- Code comments are written in Russian and explain the "why" (methodology,
+  limitations).
+- Everything else is in English.
